@@ -3,7 +3,7 @@
 #include <Audio.h>
 #include <SPI.h>
 
-#include "MovingAvg.h"
+#include <MovingAvg.hpp>
 #include "utils.h"
 #include "hardware.h"
 
@@ -11,6 +11,8 @@
 #define FFT_TYPE CONCAT(AudioAnalyzeFFT, FFT_SIZE)
 
 #define AVG_SIZE 10
+
+#define SCALE_Y 1.2
 
 // Audio stuff
 FFT_TYPE fft;
@@ -104,13 +106,13 @@ void renderFilter(int pinVr1, int pinVr2, MovingAvg<AVG_SIZE>& vr1Avg, MovingAvg
 
 int readFFTY(int bin)
 {
-    float n = fft.read(bin);
+    float n = fft.read(bin) * SCALE_Y;
     return (int)(n * TFT_HEIGHT);
 }
 
 int readFFTY(int binStart, int binEnd)
 {
-    float n = fft.read(binStart, binEnd);
+    float n = fft.read(binStart, binEnd) * SCALE_Y;
     return (int)(n * TFT_HEIGHT);
 }
 
