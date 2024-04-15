@@ -124,12 +124,11 @@ inline int16_t freqToPos(float hz)
 
 inline float calcNaturalFreq(float vr2)
 {
-    // The extra 1000 is to convert from kHz to Hz
-    return 1000.0 / (2.0 * PI * (vr2 + FILT_R7_VAL) * FILT_C2_VAL);
+    return 1.0 / (2.0 * PI * (vr2 + FILT_R7_VAL) * FILT_C2_VAL);
 }
 
 inline float calcBW(float vr1, float f0)
 {
-    float q = (vr1 + FILT_R4_VAL) / 10000.0;
+    float q = (vr1 + FILT_R4_VAL) / FILT_R6_VAL;
     return f0 / q;
 }

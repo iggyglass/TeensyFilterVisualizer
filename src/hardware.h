@@ -21,9 +21,10 @@
 // Filter Component Values
 #define FILT_VR1_VAL 100e3
 #define FILT_VR2_VAL 10e3
+#define FILT_R6_VAL 10e3
 #define FILT_R7_VAL 1e3
 #define FILT_R4_VAL 1e3
-#define FILT_C2_VAL 10e-6
+#define FILT_C2_VAL 10e-9
 
 // TFT Dimensions
 #define TFT_WIDTH 160
