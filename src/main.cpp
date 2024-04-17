@@ -6,6 +6,7 @@
 #include <MovingAvg.hpp>
 #include "utils.h"
 #include "hardware.h"
+#include "FilterVis.h"
 
 #define FFT_SIZE 1024 // either 256 or 1024
 #define FFT_TYPE CONCAT(AudioAnalyzeFFT, FFT_SIZE)
@@ -22,30 +23,19 @@ AudioConnection patch(audioIn, fft);
 // Display stuff
 ST7735_t3 disp = ST7735_t3(TFT_CS, TFT_DC, TFT_RST);
 
-tft::color_t filt1CenterColor = tft::color565(0, 0, 255);
-tft::color_t filt1BwColor = tft::color565(0, 128, 250);
-
-tft::color_t filt2CenterColor = tft::color565(255, 0, 0);
-tft::color_t filt2BwColor = tft::color565(231, 85, 74);
+FilterVis<AVG_SIZE> filt1 = FilterVis<AVG_SIZE>(FILT1_VR1_PIN, FILT1_VR2_PIN, tft::color565(0, 0, 255), tft::color565(0, 128, 250));
+FilterVis<AVG_SIZE> filt2 = FilterVis<AVG_SIZE>(FILT2_VR1_PIN, FILT2_VR2_PIN, tft::color565(255, 0, 0), tft::color565(231, 85, 74));
 
 constexpr int scaleX = (FFT_SIZE / 2) / TFT_WIDTH;
-
-// Filter state estimation stuff
-MovingAvg<AVG_SIZE> filt1Vr1Avg = {};
-MovingAvg<AVG_SIZE> filt1Vr2Avg = {};
-MovingAvg<AVG_SIZE> filt2Vr1Avg = {};
-MovingAvg<AVG_SIZE> filt2Vr2Avg = {};
 
 // Prototypes
 int readFFTY(int bin);
 int readFFTY(int binStart, int binEnd);
 
 inline int16_t freqToPos(float hz);
-inline float calcNaturalFreq(float vr2);
-inline float calcBW(float vr1, float f0);
 
 void renderFFT();
-void renderFilter(int pinVr1, int pinVr2, MovingAvg<AVG_SIZE>& vr1Avg, MovingAvg<AVG_SIZE>& vr2Avg, tft::color_t centerColor, tft::color_t bwColor);
+void renderFreq(float f, tft::color_t color);
 
 // Code
 void setup()
@@ -64,8 +54,8 @@ void loop()
 
     disp.fillScreen(ST7735_BLACK);
 
-    renderFilter(FILT1_VR1_PIN, FILT1_VR2_PIN, filt1Vr1Avg, filt1Vr2Avg, filt1CenterColor, filt1BwColor);
-    renderFilter(FILT2_VR1_PIN, FILT2_VR2_PIN, filt2Vr1Avg, filt2Vr2Avg, filt2CenterColor, filt2BwColor);
+    filt1.RenderFilter(renderFreq);
+    filt2.RenderFilter(renderFreq);
     renderFFT();
 
     disp.updateScreenAsync();
@@ -84,24 +74,11 @@ void renderFFT()
     }
 }
 
-void renderFilter(int pinVr1, int pinVr2, MovingAvg<AVG_SIZE>& vr1Avg, MovingAvg<AVG_SIZE>& vr2Avg, tft::color_t centerColor, tft::color_t bwColor)
+void renderFreq(float f, tft::color_t color)
 {
-    vr1Avg.Sample((analogRead(pinVr1) / 1024.0) * FILT_VR1_VAL);
-    vr2Avg.Sample((analogRead(pinVr2) / 1024.0) * FILT_VR2_VAL);
+    int16_t pos = freqToPos(f);
 
-    float vr1 = vr1Avg.Get();
-    float vr2 = vr2Avg.Get();
-
-    float f0 = calcNaturalFreq(vr2);
-    float hbw = calcBW(vr1, f0) / 2;
-
-    int16_t centerX = freqToPos(f0);
-    int16_t bwPos = freqToPos(f0 + hbw);
-    int16_t bwNeg = freqToPos(f0 - hbw);
-
-    disp.drawFastHLine(0, centerX, TFT_HEIGHT, centerColor);
-    disp.drawFastHLine(0, bwPos, TFT_HEIGHT, bwColor);
-    disp.drawFastHLine(0, bwNeg, TFT_HEIGHT, bwColor);
+    disp.drawFastHLine(0, pos, TFT_HEIGHT, color);
 }
 
 int readFFTY(int bin)
@@ -120,15 +97,4 @@ inline int16_t freqToPos(float hz)
 {
     // f_n = n * (F_sample / N_fft)
     return (int16_t)((hz * FFT_SIZE) / 44100.0) / scaleX;
-}
-
-inline float calcNaturalFreq(float vr2)
-{
-    return 1.0 / (2.0 * PI * (vr2 + FILT_R7_VAL) * FILT_C2_VAL);
-}
-
-inline float calcBW(float vr1, float f0)
-{
-    float q = (vr1 + FILT_R4_VAL) / FILT_R6_VAL;
-    return f0 / q;
 }
